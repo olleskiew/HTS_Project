@@ -1,0 +1,202 @@
+---
+title: "HTS_Project"
+format:
+  html:
+    toc: true
+    toc-location: left
+    code-copy: true
+    code-fold: false
+    highlight-style: github
+    theme: cosmo
+    css: styles.css
+editor: visual
+engine: markdown
+execute:
+  enabled: false
+---
+
+## Introduction:
+
+### Versions of programs used:
+
+entrez-direct 24.0
+
+fasterq-dump : 3.2.1
+
+md5sum (GNU coreutils): 9.4
+
+bowtie2-align-s version: 2.5.4
+
+STAR: 2.7.11b
+
+**disclaimer**: during work on this project we used ChatGPT 5.2 version - this AI tool was used for translating to polish part of documentation, managing YAML options and debugging code. Examples of used prompt can be found in file:\
+AI_usage.txt
+
+## Downloading data
+
+As always, first step of analysis is downloading the data. We decided to use reads from BioProject PRJNA147913, due to the fact this reads were uploaded into SRA archive in 2011. We obtained run info from this project and then isolated SRR ids.\[1\]
+
+```{bash}
+#|eval: false 
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+
+esearch -db sra -query PRJNA147913 | efetch -format runinfo > runinfo.csv
+cat runinfo.csv | cut -f 1 -d ',' | grep SRR | head > runids.txt
+
+conda deactivate 
+```
+
+Next, the list of SRR ids were used with command parallel to download raw reads from SRA archive. To learn how commend parallel works we used tutorial \[2\]
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+
+mkdir -p data
+cat runids.txt | parallel -j 4 fasterq-dump -e 2 --split-files -O data {}
+
+conda deactivate 
+```
+
+Then we moved one to downloading human reference genome from NCBI. \[3\] \[4\]
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+mkdir -p reference
+cd reference
+
+datasets download genome accession GCF_000001405.40 --filename GRCh38_p14.zip --include genome,gff3
+
+conda deactivate
+```
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+cd reference/GRCh38_p14
+
+md5sum --check md5sum.txt
+
+conda deactivate
+```
+
+md5sum showed that the file was not corrupted during transfer
+
+## Quality Control
+
+We decided to perform quality control check with two tools: FastQC and MultiQC. While FastQC generates one report per sample the MultiQC software groups any FastQC output into single report.
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+
+mkdir -p QC_1/multiqc
+fastqc -q -o QC_1/ data/*.fastq
+multiqc -q -o QC_1/multiqc QC_1/
+
+conda deactivate
+```
+
+The quality control showed some interesting aspects of data:
+
+-   All Samples had adapters removed before uploading them to SRA archive
+
+-   There is high level of duplication
+
+-   Two samples - SRR349743 and SR349745 have bad sequence per tile quality. The probable cause is an air bubble - due to this read some parts of chip was not read correctly
+
+-   All samples have warnings related to the 'Per sequence GC content' module. There is possibility of contamination with rRNA.
+
+Unfortunately we are unable to do anything with these problems, only to take them into consideration when analyzing the data.
+
+::: {layout-ncol="3"}
+![](plots/figure1.png){width="800"} ![](plots/figure2.png){width="800"} ![](plots/figure3.png){width="800"}
+:::
+
+Data for our project was published in 2011, so looking at individual samples we may observe characteristic curve for older reads with Illumina. ![](plots/figure4.png)
+
+We decided to not trim our samples with Cutadapt, due to the fact that all adapters were removed prior to uploading files into SRA archive, which means they were probably used for analysis which results are in the article. This approach will allow us to compere our results better.
+
+## Mapping
+
+The next step is mapping our reads to the genome. Unfortunately we were not able to obtain information which mapping tool was used in the article, so we decided to perform mapping twice - once with STAR, due to the fact it is splice aware, and once with Bowtie2 which is quicker and more popular
+
+### STAR
+
+To perform mapping with STAR we used STAR manual \[5\].
+
+Mapping consist of two steps:
+
+1.  indexing genome
+2.  mapping reads to the reference using parallel
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+
+mkdir -p reference/GRCh38_p14/ncbi_dataset/data/GCF_000001405.40/STAR_indx
+
+#Indexing
+STAR --runMode genomeGenerate \
+  --runThreadN 3 \
+  --genomeDir reference/STAR_GRCh38_p14 \
+  --genomeFastaFiles reference/GRCh38_p14/ncbi_dataset/data/GCF_000001405.40/GCF_000001405.40_GRCh38.p14_genomic.fna \
+  --sjdbGTFfile reference/GRCh38_p14/ncbi_dataset/data/GCF_000001405.40/genomic.gff \
+  --sjdbGTFtagExonParentTranscript Parent \
+  --sjdbOverhang 37
+
+
+```
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+
+mkdir -p STAR_align STAR_align/parallel_results
+
+#Mapping
+parallel --results STAR_align/parallel_results -j 4 \
+  STAR --runThreadN 3 \
+       --genomeDir reference/STAR_GRCh38_p14 \
+       --readFilesIn {} \
+       --outFileNamePrefix STAR_align/{/.}. \
+       --outSAMtype BAM SortedByCoordinate \
+  ::: data/*.fastq
+
+
+conda deactivate
+```
+
+### Bowtie2
+
+Another part was performing mapping with Bowtie2. Once again, mapping consist of the same two steps: indexing, and then mapping reads using parallel
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+cd reference/GRCh38_p14/ncbi_dataset/data/GCF_000001405.40
+
+bowtie2-build --threads 12 GCF_000001405.40_GRCh38.p14_genomic.fna B_ref_indx #building index
+
+conda deactivate
+```
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+
+mkdir -p Bowtie_aligment
+mkdir -p Bowtie_aligment Bowtie_aligment/parallel_logs
+
+#Mapping
+parallel -j 4 --results Bowtie_aligment/parallel_logs \
+  bowtie2 -x reference/GRCh38_p14/ncbi_dataset/data/GCF_000001405.40/B_ref_indx \
+  -U {} --threads 3 \
+  -S Bowtie_aligment/{/.}.sam \
+  ::: data/*.fastq
+
+
+
+```
