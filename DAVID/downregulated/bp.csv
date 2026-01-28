@@ -1,0 +1,10 @@
+"Category","Term","Genes","Count","List Total","Pop Hits","Pop Total","P-Value","Benjamini","Fold Enrichment","Bonferroni","FDR","Fisher Exact"
+"GOTERM_BP_DIRECT","keratinization","3.64%","16","353","74","19512","3.61e-12","5.86e-9","11.95","5.86e-9","5.84e-9","2.44e-13"
+"GOTERM_BP_DIRECT","epidermis development","3.64%","16","353","117","19512","3.10e-9","1.67e-6","7.56","5.03e-6","1.66e-6","3.61e-10"
+"GOTERM_BP_DIRECT","keratinocyte differentiation","2.96%","13","353","70","19512","4.10e-9","1.67e-6","10.27","6.66e-6","1.66e-6","3.35e-10"
+"GOTERM_BP_DIRECT","epithelial cell differentiation","2.28%","10","353","114","19512","2.25e-4","7.30e-2","4.85","3.06e-1","7.27e-2","4.25e-5"
+"GOTERM_BP_DIRECT","proteolysis","5.69%","25","353","671","19512","1.20e-3","1.95e-1","2.06","8.58e-1","1.94e-1","5.55e-4"
+"GOTERM_BP_DIRECT","lipid metabolic process","6.61%","29","353","847","19512","1.57e-3","2.32e-1","1.89","9.22e-1","2.31e-1","7.95e-4"
+"GOTERM_BP_DIRECT","fatty acid metabolic process","2.51%","11","353","214","19512","5.63e-3","4.99e-1","2.84","1.00e+0","4.97e-1","1.86e-3"
+"GOTERM_BP_DIRECT","inflammatory response","4.10%","18","353","474","19512","5.83e-3","4.99e-1","2.10","1.00e+0","4.97e-1","2.63e-3"
+

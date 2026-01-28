@@ -1,0 +1,4 @@
+"Category","Term","Genes","Count","List Total","Pop Hits","Pop Total","P-Value","Benjamini","Fold Enrichment","Bonferroni","FDR","Fisher Exact"
+"KEGG_PATHWAY","Cornified envelope formation","6.83%","30","173","217","9496","1.31e-17","3.47e-15","7.59","3.47e-15","3.47e-15","1.53e-18"
+"KEGG_PATHWAY","Metabolic pathways","9.57%","42","173","1583","9496","9.37e-3","8.25e-1","1.46","9.17e-1","8.25e-1","6.19e-3"
+

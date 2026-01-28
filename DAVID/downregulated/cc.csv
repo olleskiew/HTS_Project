@@ -1,0 +1,13 @@
+"Category","Term","Genes","Count","List Total","Pop Hits","Pop Total","P-Value","Benjamini","Fold Enrichment","Bonferroni","FDR","Fisher Exact"
+"GOTERM_CC_DIRECT","cornified envelope","4.56%","20","375","60","20808","4.40e-19","1.28e-16","18.50","1.28e-16","1.21e-16","1.66e-20"
+"GOTERM_CC_DIRECT","extracellular exosome","22.55%","99","375","2242","20808","1.75e-17","2.54e-15","2.45","5.08e-15","2.41e-15","6.94e-18"
+"GOTERM_CC_DIRECT","extracellular region","19.82%","87","375","2693","20808","5.30e-8","5.14e-6","1.79","1.54e-5","4.88e-6","2.88e-8"
+"GOTERM_CC_DIRECT","extracellular space","15.03%","66","375","1895","20808","2.82e-7","2.05e-5","1.93","8.21e-5","1.95e-5","1.42e-7"
+"GOTERM_CC_DIRECT","apical plasma membrane","5.47%","24","375","411","20808","1.75e-6","1.02e-4","3.24","5.08e-4","9.64e-5","5.05e-7"
+"GOTERM_CC_DIRECT","cytoplasm","41.46%","182","375","7749","20808","5.77e-6","2.80e-4","1.30","1.68e-3","2.65e-4","4.37e-6"
+"GOTERM_CC_DIRECT","plasma membrane","33.03%","145","375","5927","20808","1.59e-5","6.06e-4","1.36","4.61e-3","5.74e-4","1.15e-5"
+"GOTERM_CC_DIRECT","cytosol","31.89%","140","375","5677","20808","1.66e-5","6.06e-4","1.37","4.83e-3","5.74e-4","1.20e-5"
+"GOTERM_CC_DIRECT","anchoring junction","4.78%","21","375","423","20808","8.98e-5","2.91e-3","2.75","2.58e-2","2.76e-3","3.10e-5"
+"GOTERM_CC_DIRECT","Golgi apparatus","9.57%","42","375","1492","20808","4.46e-3","9.26e-2","1.56","7.27e-1","8.79e-2","2.75e-3"
+"GOTERM_CC_DIRECT","intracellular membrane-bounded organelle","6.61%","29","375","963","20808","8.63e-3","1.32e-1","1.67","9.20e-1","1.25e-1","4.93e-3"
+
