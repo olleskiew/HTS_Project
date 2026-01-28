@@ -1,0 +1,87 @@
+Q: Hi! Can you please translate this text to polish? 
+
+What are "spots"? 
+
+Spots are a legacy term referring to locations on the flow cell for Illumina sequencers. All of the bases for a single location constitute the spot including technical reads (e.g., adapters, primers, barcodes, etc.) and biological reads (forward, reverse). In general, you can think of a spot as you do a read. For more information on spots, see the linked discussion on Biostars. When downloading "spots", always split the spots into the original files using
+
+A:Czym są „spoty”?
+
+„Spoty” to historyczny termin odnoszący się do pozycji (miejsc) na flow cellu w sekwenatorach Illumina. Wszystkie bazy odczytane z jednej takiej pozycji składają się na jeden spot i obejmują zarówno odczyty techniczne (np. adaptery, startery, kody kreskowe itp.), jak i odczyty biologiczne (forward, reverse). Ogólnie można myśleć o spocie tak, jak o odczycie (read). Więcej informacji o spotach znajduje się w podlinkowanej dyskusji na Biostars. Pobierając „spoty”, zawsze dziel je na oryginalne pliki przy użyciu
+
+Q:Is this code going to work? 
+mkdir -p QC_1/multiqc
+fastqc -q -o QC_1/ data/*.fastq 
+multiqc -q -o QC_1/multiqc QC_1/
+A:Tak — ten zestaw poleceń zadziała i jest logicznie poprawny:
+
+Tworzysz katalog na raport zbiorczy: QC_1/multiqc
+Uruchamiasz FastQC na wszystkich data/*.fastq i zapisujesz raporty do QC_1/
+Uruchamiasz MultiQC, który przeskanuje QC_1/ i wygeneruje raport zbiorczy w QC_1/multiqc/
+
+Są tylko trzy praktyczne uwagi:
+
+Katalog wyjściowy MultiQC jest wewnątrz katalogu wejściowego (QC_1/). To zwykle działa, ale przy ponownych uruchomieniach MultiQC może „widzieć” też swoje wcześniejsze raporty. Jeśli chcesz tego uniknąć, możesz trzymać output MultiQC w katalogu poza QC_1/ albo wykluczyć ten podkatalog.
+
+Jeśli uruchamiasz to kolejny raz i chcesz nadpisać istniejący raport MultiQC, zwykle używa się opcji --force (w przeciwnym razie może ostrzec lub dopisywać).
+
+Jeśli Twoje pliki są skompresowane (*.fastq.gz), to wzorzec data/*.fastq ich nie złapie.
+
+Po wykonaniu komend spodziewaj się w QC_1/ plików *_fastqc.html i *_fastqc.zip, a w QC_1/multiqc/ jednego raportu zbiorczego (HTML) + plików pomocniczych.
+
+Q: Hi! I want to render my quatro file in html, but R studio wants to use Jupyter. Is there anything I can do? 
+A:Tak — to zwykle wynika z automatycznego wyboru silnika obliczeń w Quarto.
+
+W .qmd Quarto wybiera jeden silnik dla całego pliku. Jeśli w dokumencie pojawi się jakikolwiek wykonywalny blok inny niż {r} (np. {bash}, {python}), Quarto może przełączyć się na Jupyter, a kernel wybierze na podstawie pierwszej wykonywalnej komórki.
+
+Jak to naprawić (HTML)
+
+Opcja A — chcesz tylko HTML + obrazki + komendy jako “dokumentacja”, bez uruchamiania czegokolwiek
+
+Zamiast wykonywalnych bloków używaj zwykłych bloków kodu (nie wykonują się):
+
+```bash … ``` (bez klamerek)
+albo, jeśli chcesz zachować składnię “Quarto/knitr” w wydruku, użyj podwójnych klamerek:
+
+```{{bash}} … ``` (blok jest nieuruchamiany)
+
+Dodatkowo możesz w YAML wyłączyć wykonywanie globalnie:
+
+execute: enabled: false
+
+Opcja B — chcesz, żeby dokument był liczony przez knitr (np. masz R)
+W YAML wymuś silnik:
+
+engine: knitr (alternatywnie obecność knitr: w YAML też nadpisuje domyślny wybór).
+
+Jeżeli wkleisz swój nagłówek YAML i pierwszy fragment dokumentu (pierwsze 20–30 linii), wskażę dokładnie, co powoduje wybór Jupyter i jak to najczyściej przestawić.
+
+Q: Can you show me how to check which process are active on my computer?
+A: Poniżej masz najpraktyczniejsze sposoby (Linux / macOS). Wybierz zależnie od tego, co chcesz zobaczyć.
+
+Szybki podgląd „na żywo”
+
+top – klasyczny monitor procesów (CPU/RAM)
+htop – wygodniejszy (jeśli zainstalowany)
+
+Lista procesów i filtrowanie pod konkretne narzędzie
+
+Wszystkie procesy:
+ps aux
+
+
+Tylko procesy bowtie2 / fastqc / parallel:
+ps aux | grep -E 'bowtie2|fastqc|parallel' | grep -v grep
+
+Ile procesów / wątków zużywa dany program
+PID i liczba wątków (Linux):
+
+ps -eLo pid,tid,pcpu,pmem,comm | grep bowtie2
+
+Jeśli chcesz tylko swoje procesy
+ps -u "$USER" -o pid,ppid,pcpu,pmem,etime,cmd
+
+Sprawdzenie, czy coś nadal działa „w tle” w terminalu
+jobs -l
+
+
+Jeśli powiesz, czy jesteś na Linux czy macOS oraz co dokładnie monitorujesz (np. parallel + bowtie2), dobiorę najbardziej czytelne polecenie pod Twoje potrzeby.
