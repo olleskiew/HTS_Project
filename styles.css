@@ -1,0 +1,12 @@
+div.sourceCode pre,
+pre.sourceCode,
+pre code {
+  white-space: pre-wrap !important;   
+  overflow-x: auto !important;          
+}
+
+div.sourceCode pre code,
+pre code {
+  overflow-wrap: anywhere !important; 
+  word-break: break-word !important;
+
