@@ -160,11 +160,9 @@ figure 4: This plot shows mean quality score of all samples. The quality drops a
 
 </figure>
 
-We decided to not trim our samples with Cutadapt, due to the fact that all adapters were removed prior to uploading files into SRA archive.
-This means this samples where probably used for analysis from the article. 
-This approach will allow us to compere our results better.
+We decided to not trim our samples with Cutadapt, due to the fact that all adapters were removed prior to uploading files into SRA archive. This means this samples where probably used for analysis from the article. This approach will allow us to compere our results better.
 
-Full MultiQC report is available on github repository [7]
+Full MultiQC report is available on github repository \[7\]
 
 ## Mapping
 
@@ -449,40 +447,44 @@ generate_plot <- function(top5, y, title)
       fill = "Adjusted p-value (Benjamini)",
       title = title #"Top 5 enriched GO terms"
     ) +
-    theme_light(base_size = 14) +
+    theme_light(base_size = 20) +
     theme(
-      axis.text.y = element_text(size = 12),
+      axis.text.y = element_text(size = 17),
       plot.title = element_text(hjust = 0.5)
     )
 }
 
-ggsave("Plots/DAVID/bp_up.png", 
+ggsave("img/DAVID/bp_up.png", 
        plot = generate_plot(top5_up$BP, "Biological Processes", "Top 5 enriched Biological Processes"), 
-       width = 12, height = 6, dpi = 600)
-ggsave("Plots/DAVID/cc_up.png",
+       width = 15, height = 6, dpi = 600)
+ggsave("img/DAVID/cc_up.png",
        plot = generate_plot(top5_up$CC, "Cellular Components", "Top 5 enriched Cellular Components"), 
-       width = 12, height = 6, dpi = 600)
-ggsave("Plots/DAVID/mf_up.png", 
+       width = 15, height = 6, dpi = 600)
+ggsave("img/DAVID/mf_up.png", 
        plot = generate_plot(top5_up$MF, "Molecular Functions", "Top 5 enriched Molecular Functions"), 
-       width = 12, height = 6, dpi = 600)
-ggsave("Plots/DAVID/kegg_up.png", 
+       width = 15, height = 6, dpi = 600)
+ggsave("img/DAVID/kegg_up.png", 
        plot = generate_plot(top5_up$KEGG, "KEGG pathways", "Top 5 KEGG pathways"), 
-       width = 12, height = 6, dpi = 600)
+       width = 15, height = 6, dpi = 600)
 
-ggsave("Plots/DAVID/bp_dn.png",
+ggsave("img/DAVID/bp_dn.png",
        plot = generate_plot(top5_dn$BP, "Biological Processes", "Top 5 enriched Biological Processes"),
-       width = 12, height = 6, dpi = 600)
-ggsave("Plots/DAVID/cc_dn.png",
+       width = 15, height = 6, dpi = 600)
+ggsave("img/DAVID/cc_dn.png",
        plot = generate_plot(top5_dn$CC, "Cellular Components", "Top 5 enriched Cellular Components"), 
-       width = 12, height = 6, dpi = 600)
-ggsave("Plots/DAVID/mf_dn.png", 
+       width = 15, height = 6, dpi = 600)
+ggsave("img/DAVID/mf_dn.png", 
        plot = generate_plot(top5_dn$MF, "Molecular Functions", "Top 5 enriched Molecular Functions"), 
-       width = 12, height = 6, dpi = 600)
-ggsave("Plots/DAVID/kegg_dn.png", 
+       width = 15, height = 6, dpi = 600)
+ggsave("img/DAVID/kegg_dn.png", 
        plot = generate_plot(top5_dn$KEGG, "KEGG pathways", "Top 5 KEGG pathways"), 
-       width = 12, height = 6, dpi = 600)
+       width = 15, height = 6, dpi = 600)
 
 ```
+
+<img src="img/DAVID/DAVID.png" width="100%"/>
+
+Figure 5: Plots created with code above from data generated with DAVID. All plots except the last one display the 5 terms with the highest enrichment. Higher-quality versions are available on our GitHub.
 
 Most enriched biological processes among upregulated genes are associated with cancer. Among the KEGG pathways, the metabolic pathway is noticeably enriched in downregulated genes, while cancer-related pathways are common in upregulated genes. Interestingly, protein binding is the most enriched molecular function in both upregulated and downregulated genes.
 
@@ -535,6 +537,10 @@ dotplot(down_vec_MF)
 dotplot(down_vec_CC)
 ```
 
+<img src="img/enrichGO/enrichgo.png" width="100%"/>
+
+Figure 6: Plots created using enrichGO and visualised with enrichplot. All plots except the last one display the 10 terms with the highest enrichment. Higher-quality versions are available on our GitHub.
+
 Among upregulated genes, most enriched ones were connected to extracellular matrix. Interestingly, downregulated Biological Processes were clearly connected to squamous carcinoma.
 
 ### Comparison with the article
@@ -549,17 +555,22 @@ DAVID and enrichGO returned different GO terms, but in both cases the results ma
 
 ### Versions of programs used:
 
+```         
 entrez-direct 24.0
-
 fasterq-dump : 3.2.1
-
 md5sum (GNU coreutils): 9.4
-
 bowtie2-align-s version: 2.5.4
+STAR: 2.7.11b samtools 1.22.1
+dplyr_1.1.4
+ggplot2_4.0.1
+enrichplot_1.30.4
+org.Hs.eg.db_3.22.0
+clusterProfiler_4.18.4
 
-STAR: 2.7.11b
-
-samtools 1.22.1
+R version 4.5.2 (2025-10-31) 
+Platform: x86_64-pc-linux-gnu 
+Running under: Ubuntu 25.10
+```
 
 **disclaimer**: during work on this project we used ChatGPT 5.2 version - this AI tool was used for translating to polish part of documentation, managing YAML options and debugging code. Examples of used prompt can be found in file:\
 AI_usage.txt
@@ -574,11 +585,15 @@ This project was created by three students:
 
 -   Olga Leśkiewicz - created plan of the project, performed quality check, mapping and prepared design of the slides show
 
--   Kaja Łucka - she wrote an introduction, performed enrichment analysis with DAVID, KEGG and GEO
+-   Kaja Łucka - wrote an introduction and performed enrichment analysis with DAVID and enrichGO
 
--   Tomasz Medoń - meta-data specialist, performed DEG analysis and compered its results to original study
+-   Tomasz Medoń - meta-data specialist, performed DGE analysis and compared its results to original study
 
-All of the members added their parts to the slides show of presentation and participated in looking for the right aritcle
+All members added their parts to the slides show and participated in finding the right article.
+
+### Our project on GitHub
+
+<https://github.com/olleskiew/HTS_Project.git>
 
 ## Citations:
 
