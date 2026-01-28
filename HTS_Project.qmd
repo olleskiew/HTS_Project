@@ -1,0 +1,595 @@
+---
+title: "HTS Project"
+author: "Olga Leśkiewicz, Tomasz Medoń, Kaja Łucka"
+format:
+  html:
+    toc: true
+    toc-location: left
+    code-copy: true
+    code-fold: false
+    highlight-style: github
+    theme: cosmo
+    css: styles.css
+    embed-resources: true
+    code-block-bg: true
+    code-line-numbers: false
+    code-overflow: wrap
+editor: visual
+execute:
+  enabled: false
+---
+
+## Introduction:
+
+Bioinformatics is a rapidly growing field, and analyses performed even a decade ago may yield different results when the same datasets are processed with current tools. In this project, we tried to replicate the results from the study [*Rab25 Is a Tumor Suppressor Gene with Anti‑angiogenic and Anti‑invasive Activities in Esophageal Squamous Cell Carcinoma*](https://aacrjournals.org/cancerres/article/72/22/6024/577982/Rab25-Is-a-Tumor-Suppressor-Gene-with)\[1\] from 2011*.* We wanted to see whether we would obtain similar results and if we could extract even more information from the data. Unfortunately, the exact workflow (code) used in the original study is not available, which proved how important it is to make scientific studies reproducible for future researchers.
+
+The article we chose focuses on esophageal squamous cell carcinoma, one of the most common types of esophageal cancer, which is associated with poor prognosis and high mortality rates. This cancer develops from the squamous cells lining the esophagus and is often diagnosed at an advanced stage. The study showed down-regulation of *Rab25* in esophageal squamous cell carcinoma. Lower expression levels of this gene were associated with reduced overall survival of patients.
+
+In the paper, high‑throughput transcriptome sequencing (RNA‑Seq) was used to identify differentially expressed genes between tumour and non‑tumour samples. From what we could find in the article, the first step of the workflow was RNA‑Seq library preparation and sequencing on an Illumina platform, followed by mapping the reads to a human reference genome. The authors then quantified transcript expression levels (counts per gene) and performed statistical analyses to identify differentially expressed genes between tumour and non‑tumour samples. After these steps, the authors carried out wet-lab validation experiments, which were not the focus of our work.
+
+For our project, we used reads from [**BioProject PRJNA147913**](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA147913), which were uploaded to the SRA archive in 2011, along with the human reference genome [**GRCh38.p14**](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_000001405.40/) from NCBI.
+
+## Downloading data
+
+As always, first step of analysis is downloading the data. We decided to use reads from BioProject PRJNA147913, due to the fact this reads were uploaded into SRA archive in 2011. We obtained run info from this project and then isolated SRR ids.\[2\]
+
+```{bash}
+#|eval: false 
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+
+esearch -db sra -query PRJNA147913 | efetch -format runinfo > runinfo.csv
+cat runinfo.csv | cut -f 1 -d ',' | grep SRR | head > runids.txt
+
+conda deactivate 
+```
+
+Next, the list of SRR ids were used with command parallel to download raw reads from SRA archive. To learn how commend parallel works we used tutorial \[3\]
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+
+mkdir -p data
+cat runids.txt | parallel -j 4 fasterq-dump -e 2 --split-files -O data {}
+
+conda deactivate 
+```
+
+Then we moved one to downloading human reference genome from NCBI. \[4\] \[5\] \[6\]
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+mkdir -p reference
+cd reference
+
+datasets download genome accession GCF_000001405.40 --filename GRCh38_p14.zip --include genome,gff3,gtf
+
+conda deactivate
+```
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+cd reference/GRCh38_p14
+
+md5sum --check md5sum.txt
+
+conda deactivate
+```
+
+md5sum showed that the file was not corrupted during transfer
+
+## Quality Control
+
+We decided to perform quality control check with two tools: FastQC and MultiQC. While FastQC generates one report per sample the MultiQC software groups any FastQC output into single report.
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+
+mkdir -p QC_1/multiqc
+fastqc -q -o QC_1/ data/*.fastq
+multiqc -q -o QC_1/multiqc QC_1/
+
+conda deactivate
+```
+
+The quality control showed some interesting aspects of data:
+
+-   All Samples had adapters removed before uploading them to SRA archive
+
+-   There is high level of duplication
+
+-   Two samples - SRR349743 and SR349745 have bad sequence per tile quality. The probable cause is an air bubble - due to this read some parts of chip was not read correctly
+
+-   All samples have warnings related to the 'Per sequence GC content' module. There is possibility of contamination with rRNA.
+
+Unfortunately we are unable to do anything with these problems, only to take them into consideration when analyzing the data.
+
+<figure style="margin: 0 0 16px 0;">
+
+<img src="plots/figure1.png" alt="A" style="width:100%; max-width:900px; height:350px; object-fit:contain; display:block; margin:auto;"/>
+
+<figcaption style="text-align:center; font-weight:600; margin-top:6px;">
+
+figure 1: This plot shows status for each FastQC section showing whether results seem entirely normal (green), slightly abnormal (orange) or very unusual (red). We are able to see that per base sequence content, per sequence GC content, sequence duplication levels and overrepressented sequences are abnormal or very unusual.
+
+</figcaption>
+
+</figure>
+
+<figure style="margin: 0 0 16px 0;">
+
+<img src="plots/figure2.png" alt="B" style="width:100%; max-width:900px; height:350px; object-fit:contain; display:block; margin:auto;"/>
+
+<figcaption style="text-align:center; font-weight:600; margin-top:6px;">
+
+figure 2: This plot shows per sequence GC-content. We may see that it's shape is similar to normal distribution. Unfortunately the sharp peak is observed near 58–60% GC and have wide tail around 30–50% GC. She sharp peak may indicate duplicated sequences
+
+</figcaption>
+
+</figure>
+
+<figure style="margin: 0;">
+
+<img src="plots/figure3.png" alt="C" style="width:100%; max-width:900px; height:350px; object-fit:contain; display:block; margin:auto;"/>
+
+<figcaption style="text-align:center; font-weight:600; margin-top:6px;">
+
+figure 3: On this plot we are able to see duplicates level of sequences. Multiple specific sequences are repeatedly detected across most samples (often 8–12/12 reports), each contributing up to \~0.7% of all reads, while the Adapter Content remains near zero. This pattern is consistent with RNA-seq libraries dominated by highly expressed transcripts and/or residual rRNA
+
+</figcaption>
+
+</figure>
+
+Data for our project was published in 2011, so looking at individual samples we may observe characteristic curve for older reads with Illumina.
+
+</figure>
+
+<figure style="margin: 0;">
+
+<img src="plots/figure4.png" alt="C" style="width:100%; max-width:900px; height:350px; object-fit:contain; display:block; margin:auto;"/>
+
+<figcaption style="text-align:center; font-weight:600; margin-top:6px;">
+
+figure 4: This plot shows mean quality score of all samples. The quality drops at the end, which is typical for old RNA-seq data. The sample SR349745 have the worst quality of the set which is consisted with bad sequence per tile quality we observed earlier.
+
+</figcaption>
+
+</figure>
+
+We decided to not trim our samples with Cutadapt, due to the fact that all adapters were removed prior to uploading files into SRA archive.
+This means this samples where probably used for analysis from the article. 
+This approach will allow us to compere our results better.
+
+Full MultiQC report is available on github repository [7]
+
+## Mapping
+
+We decided to use Bowtie2 for mapping reads to our reference genome.
+
+Mapping consist of two steps:
+
+1.  indexing genome
+2.  mapping reads to the reference using parallel
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+
+cd reference/GRCh38_p14/ncbi_dataset/data/GCF_000001405.40
+
+bowtie2-build --threads 12 GCF_000001405.40_GRCh38.p14_genomic.fna B_ref_indx #building index
+
+conda deactivate
+```
+
+```{bash}
+source /home/lesol/miniconda3/bin/activate
+conda activate bio
+
+mkdir -p Bowtie_aligment
+mkdir -p Bowtie_aligment Bowtie_aligment/parallel_logs
+
+#Mapping
+parallel -j 4 --results Bowtie_aligment/parallel_logs \
+  bowtie2 -x reference/GRCh38_p14/ncbi_dataset/data/GCF_000001405.40/B_ref_indx \
+  -U {} --threads 3 \
+  -S Bowtie_aligment/{/.}.sam \
+  ::: data/*.fastq
+
+
+
+```
+
+### Sorting and indexing bam files
+
+The final step in processing the mapping files was sorting and indexing the files using the samtools program.
+
+```{bash}
+source /Users/tomek/miniconda3/bin/activate
+conda activate bio
+
+mkdir -p mapped/parallel_logs
+
+parallel -j 4 --results mapped/parallel_logs \
+  "samtools view -b {} |
+  samtools sort -o mapped/{/.}_sorted.bam && samtools index mapped/{/.}_sorted.bam" \
+::: Bowtie_aligment/*.sam
+```
+
+## Differential gene expression (DGE) analysis
+
+### DESeq2
+
+For the differential gene expression (DGE) analysis, we applied the **DESeq2** package (version 1.50.2), which is the current publication standard. DESeq2 utilizes a Negative Binomial generalized linear model, which accounts for the overdispersed nature of discrete sequencing counts. To improve the reliability of the results, the package applies dispersion shrinkage to stabilize variance estimation - a crucial step for experiments with limited biological replicates.
+
+We started by downloading the Series Matrix File corresponding to the previously downloaded dataset.
+
+```{r}
+library(GEOquery)
+gse <- getGEO("GSE32424", GSEMatrix=TRUE)
+```
+
+The downloaded file was used to compile a metadata table.
+
+```{r}
+raw_metadata <- gse[["GSE32424_series_matrix.txt.gz"]]@phenoData@data[["characteristics_ch1"]]
+group_names <- gsub(".*: ", "", raw_metadata)
+groups <- as.factor(group_names)
+metadata <- pData(phenoData(gse[[1]]))[c('geo_accession','characteristics_ch1')]
+metadata$characteristics_ch1 <- gsub(".*: ", "", metadata$characteristics_ch1)
+metadata <- data.frame(metadata, row.names = 1)
+metadata
+```
+
+The file did not contain Run IDs from the SRA database, hence we used the rentrez package to convert GSM IDs.
+
+```{r}
+library(rentrez)
+gsm_to_srr <- function(gsm_id) {
+  search_res <- entrez_search(db = "sra", term = gsm_id)
+  info <- entrez_summary(db = "sra", id = search_res$ids)
+  srr_id <- gsub(".*acc=\"([^\"]+)\".*", "\\1", info$runs)
+  return(srr_id)
+}
+
+rownames(metadata) <- sapply(rownames(metadata), gsm_to_srr)
+metadata
+```
+
+### **DESeqDataSet (DDS)**
+
+The previously obtained BAM files were processed to generate a count matrix, which was then used to construct a DDS object. This object integrates the raw count data with the experimental metadata and the design formula required for downstream statistical analysis.
+
+```{r}
+library(Rsubread)
+
+bam_files <- list.files("mapped", pattern = "_sorted.bam$", full.names = TRUE)
+gtf_path <- 'reference/GRCh38_p14/ncbi_dataset/data/GCF_000001405.40/genomic.gtf'
+
+counts <- featureCounts(files = bam_files,
+                        annot.ext = gtf_path,
+                        isGTFAnnotationFile = TRUE,
+                        GTF.featureType = "exon",
+                        GTF.attrType = "gene_id",
+                        isPairedEnd = F,
+                        nthreads = 4,
+                        allowMultiOverlap = T)
+```
+
+```{r}
+count_matrix <- counts$counts
+colnames(count_matrix) <- gsub("_sorted.bam", "", colnames(count_matrix))
+```
+
+```{r}
+library(DESeq2)
+dds <- DESeqDataSetFromMatrix(countData = count_matrix, colData = metadata, design= ~ characteristics_ch1)
+dds <- DESeq(dds)
+```
+
+### PCA
+
+To assess the similarity within biological repetition groups and the differences between groups, we used PCA.
+
+```{r}
+norm_counts <- DESeq2::counts(dds, normalized = T)
+```
+
+```{r}
+library(dplyr)
+
+to_PCA <- norm_counts %>% t()
+pca <- prcomp(to_PCA)
+
+pca_metadata <- metadata %>% tibble::rownames_to_column(var ="SAMPLE")
+
+pca_plot <-
+  as.data.frame(pca$x) %>%
+  tibble::rownames_to_column(var ="SAMPLE") %>%
+  left_join(pca_metadata, by = "SAMPLE")
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(pca_plot)+
+  geom_point(mapping = aes(x = PC1,y = PC2,col = characteristics_ch1),size = 3)+
+  labs(x = percentage_variance_explained[1],y = percentage_variance_explained[2])
+```
+
+The plot shows a clear separation of groups along the first principal component (PC1). Tumor samples (blue) are clustered on the left side of the 0 axis, while non-tumor samples (red) are clustered on the right. This arrangement indicates a strong biological signal — the difference between tumor and healthy tissue is the main factor differentiating these samples.
+
+### Volcano plot
+
+Finally, we created a volcano plot illustrating gene up- and downregulation.
+
+```{r}
+library(ggplot2)
+
+dds_results <- results(dds, contrast = c("characteristics_ch1","tumor","non-tumor"), alpha = 0.01)
+dds_results <- as.data.frame(dds_results)
+
+ggplot(dds_results)+
+  geom_point(mapping = aes(x=log2FoldChange, y=-log10(padj)))+
+  theme_bw()+
+  geom_vline(xintercept = c(-2,2),linetype = "dotted")
+```
+
+```{r}
+library(dplyr)
+downregulated <- row.names(filter(dds_results, padj < 0.01, log2FoldChange < -2))
+upregulated <- row.names(filter(dds_results, padj < 0.01, log2FoldChange > 2))
+```
+
+We filtered by standard values:
+
+-   down-regulated genes (padj \< 0.01, log2FoldChange \< -2)
+
+-   up-regulated genes (padj \< 0.01, log2FoldChange \> 2).
+
+We obtained a list of 301 downregulated genes and 393 upregulated genes.
+
+## Statistics comparison with the article
+
+```{r}
+
+names <- c("Current study", "Tong, Man et al.")
+Values <- c(sum(rowSums(counts(dds)) > 0), 14351)
+
+barplot(Values, main = 'Number of represented genes', names.arg = names, ylab = 'Number of genes', col = 'steelblue2')
+```
+
+```{r}
+Values <- c(sum(rowSums(counts(dds)) >= 10)/nrow(counts(dds))*100, 42)
+barplot(Values, main = '% of the total number of genes in the reference database \n with at least 10 exon reads', names.arg = names, ylab = '%', col = 'steelblue2', ylim = c(0, 100))
+```
+
+Despite using a newer genome annotation (GRCh38.p14 (2025) vs NCBI buid 37.1 (2009)), our results remained highly consistent with the original study. This suggests that the core transcriptional signature of the dataset is stable and not significantly affected by recent updates.
+
+```{r}
+colors = c('tomato2', "steelblue2")
+names <- c("Current study", "Tong, Man et al.")
+regions <- c("Down-regulated", "Up-regulated")
+
+Values <- matrix(c(length(downregulated), 132,
+                   length(upregulated), 1598),
+                nrow = 2, ncol = 2, byrow = TRUE)
+
+barplot(Values, main = "Number of detected Differentially Expressed Genes", names.arg = names,
+                        ylab = "Number of genes",
+                        col = colors, beside = TRUE)
+
+legend("topleft", regions, cex = 0.7, fill = colors)
+```
+
+## Functional analysis (GO terms)
+
+### DAVID
+
+As there were problems with RDAVIDWebService R library (it was unavailable) and DAVID API (could not esablish connection), we decided to perform analysis in DAVID manually (which we know is a bad practice due to limited reproducibility). Pathway enrichment analysis was performed separately for upregulated and downregulated genes.
+
+The steps taken (analogically for downregulated genes):
+
+1.  Go to <https://davidbioinformatics.nih.gov/tools.jsp>
+2.  **Step 1: Enter Gene List** -`B:Choose From a File` "up.txt"
+3.  **Step 2: Select Identifier** - `OFFICIAL_GENE_SYMBOL`
+4.  **Step 2a: Select species** - `Homo sapiens`
+5.  **Step 3: List Type** - `Gene List`
+6.  **Step 4: Submit List**
+7.  **Functional Annotation Tool** (save every chart a CSV file for easier plotting)
+    -   **-\> Gene_Ontology** -\> `GOTERM BP DIRECT` -\> `CHART` -\> EASE Threshold: 0.01, Count Threshold: 10
+    -   **-\> Gene_Ontology** -\> `GOTERM CC DIRECT` -\> `CHART` -\> EASE Threshold: 0.01, Count Threshold: 10
+    -   **-\> Gene_Ontology** -\> `GOTERM MF DIRECT` -\> `CHART` -\> EASE Threshold: 0.01, Count Threshold: 10
+    -   **-\> Pathways** -\> `KEGG PATHWAY` -\> `CHART` -\> EASE Threshold: 0.01, Count Threshold: 10
+
+This youtube video was tremendously helpful when working with DAVID: <https://youtu.be/EuCH5mqRylE?si=PGmqrgU2286MhFte>
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+bp_up <- read.table("DAVID/upregulated/bp.csv", header=TRUE, sep = ",")
+cc_up <- read.table("DAVID/upregulated/cc.csv", header=TRUE, sep = ",")
+mf_up <- read.table("DAVID/upregulated/mf.csv", header=TRUE, sep = ",")
+kegg_up <- read.table("DAVID/upregulated/kegg.csv", header=TRUE, sep = ",")
+
+bp_dn <- read.table("DAVID/downregulated/bp.csv", header=TRUE, sep = ",")
+cc_dn <- read.table("DAVID/downregulated/cc.csv", header=TRUE, sep = ",")
+mf_dn <- read.table("DAVID/downregulated/mf.csv", header=TRUE, sep = ",")
+kegg_dn <- read.table("DAVID/downregulated/kegg.csv", header=TRUE, sep = ",")
+
+
+# I choose 5 with most genes
+all_tables_up <- list(BP = bp_up, CC = cc_up, MF = mf_up, KEGG = kegg_up)
+all_tables_dn <- list(BP = bp_dn, CC = cc_dn, MF = mf_dn, KEGG = kegg_dn)
+
+get_top5 <- function(df) 
+{
+  df %>%
+    arrange(desc(Count)) %>%
+    slice(1:5)
+}
+
+top5_up <- lapply(all_tables_up, get_top5)
+top5_dn <- lapply(all_tables_dn, get_top5)
+
+generate_plot <- function(top5, y, title)
+{
+  plot_bp_up <- ggplot(top5) +
+    aes(x = Count, y = reorder(Term, Count), fill = Benjamini) +
+    geom_col() +
+    scale_fill_gradient(low = "red", high = "blue") +
+    labs(
+      x = "Number of genes",
+      y = y, # "GO Term"
+      fill = "Adjusted p-value (Benjamini)",
+      title = title #"Top 5 enriched GO terms"
+    ) +
+    theme_light(base_size = 14) +
+    theme(
+      axis.text.y = element_text(size = 12),
+      plot.title = element_text(hjust = 0.5)
+    )
+}
+
+ggsave("Plots/DAVID/bp_up.png", 
+       plot = generate_plot(top5_up$BP, "Biological Processes", "Top 5 enriched Biological Processes"), 
+       width = 12, height = 6, dpi = 600)
+ggsave("Plots/DAVID/cc_up.png",
+       plot = generate_plot(top5_up$CC, "Cellular Components", "Top 5 enriched Cellular Components"), 
+       width = 12, height = 6, dpi = 600)
+ggsave("Plots/DAVID/mf_up.png", 
+       plot = generate_plot(top5_up$MF, "Molecular Functions", "Top 5 enriched Molecular Functions"), 
+       width = 12, height = 6, dpi = 600)
+ggsave("Plots/DAVID/kegg_up.png", 
+       plot = generate_plot(top5_up$KEGG, "KEGG pathways", "Top 5 KEGG pathways"), 
+       width = 12, height = 6, dpi = 600)
+
+ggsave("Plots/DAVID/bp_dn.png",
+       plot = generate_plot(top5_dn$BP, "Biological Processes", "Top 5 enriched Biological Processes"),
+       width = 12, height = 6, dpi = 600)
+ggsave("Plots/DAVID/cc_dn.png",
+       plot = generate_plot(top5_dn$CC, "Cellular Components", "Top 5 enriched Cellular Components"), 
+       width = 12, height = 6, dpi = 600)
+ggsave("Plots/DAVID/mf_dn.png", 
+       plot = generate_plot(top5_dn$MF, "Molecular Functions", "Top 5 enriched Molecular Functions"), 
+       width = 12, height = 6, dpi = 600)
+ggsave("Plots/DAVID/kegg_dn.png", 
+       plot = generate_plot(top5_dn$KEGG, "KEGG pathways", "Top 5 KEGG pathways"), 
+       width = 12, height = 6, dpi = 600)
+
+```
+
+Most enriched biological processes among upregulated genes are associated with cancer. Among the KEGG pathways, the metabolic pathway is noticeably enriched in downregulated genes, while cancer-related pathways are common in upregulated genes. Interestingly, protein binding is the most enriched molecular function in both upregulated and downregulated genes.
+
+### enrichGO
+
+```{r}
+# importing data from TXT files
+downregulated <- read.table("down.txt")
+upregulated <- read.table("up.txt")
+down_vec <- as.character(downregulated$V1)
+up_vec <- as.character(upregulated$V1)
+
+# importing data from a CSV file - creating gene universe
+counts_matrix <- read.table("counts_matrix.csv", header=TRUE, sep = ",", row.names=1)
+gene_universe <- rownames(counts_matrix)  # all detected genes
+```
+
+```{r}
+library(clusterProfiler)
+library(org.Hs.eg.db)  # human (patient-derived) samples
+
+enrich <- function(gene, ont){
+  enrichGO(gene = gene,
+           universe = gene_universe,
+           OrgDb = "org.Hs.eg.db",
+           pAdjustMethod = "BH", 
+           pvalueCutoff = 0.01,
+           qvalueCutoff = 0.01,
+           readable = T,
+           keyType = "SYMBOL",
+           ont = ont) # "Biological Processes" / "Molecular Functions" / "Cellular Components"
+}
+up_vec_BP <- enrich(up_vec, "BP")
+up_vec_MF <- enrich(up_vec, "MF")
+up_vec_CC <- enrich(up_vec, "CC")
+
+down_vec_BP <- enrich(down_vec, "BP")
+down_vec_MF <- enrich(down_vec, "MF")
+down_vec_CC <- enrich(down_vec, "CC")
+```
+
+```{r}
+library(enrichplot)
+dotplot(up_vec_BP)
+dotplot(up_vec_MF)
+dotplot(up_vec_CC)
+
+dotplot(down_vec_BP)
+dotplot(down_vec_MF)
+dotplot(down_vec_CC)
+```
+
+Among upregulated genes, most enriched ones were connected to extracellular matrix. Interestingly, downregulated Biological Processes were clearly connected to squamous carcinoma.
+
+### Comparison with the article
+
+In the article it is said that pathway enrichment analysis "found the deregulated genes to be commonly associated with a number of cancer-related pathways". Two most enriched pathways were related to integrin signaling.
+
+In our analysis with DAVID, we also observed that the deregulated genes are associated with cancer. However, we did not find evidence supporting their specific involvement in integrin signaling.
+
+Interestingly, using enrichGO, we found that upregulated genes are associated with integrin binding in molecular functions and with the integrin-mediated signaling pathway in biological processes.
+
+DAVID and enrichGO returned different GO terms, but in both cases the results matched the findings from the article. DAVID and enrichGO work diferently: DAVID uses predefined gene sets and clusters to give a more general view, while enrichGO tests each GO term statistically and is more precise. Using both tools made the analysis more complete in our view.
+
+### Versions of programs used:
+
+entrez-direct 24.0
+
+fasterq-dump : 3.2.1
+
+md5sum (GNU coreutils): 9.4
+
+bowtie2-align-s version: 2.5.4
+
+STAR: 2.7.11b
+
+samtools 1.22.1
+
+**disclaimer**: during work on this project we used ChatGPT 5.2 version - this AI tool was used for translating to polish part of documentation, managing YAML options and debugging code. Examples of used prompt can be found in file:\
+AI_usage.txt
+
+```{r}
+sessionInfo()
+```
+
+## Contributions:
+
+This project was created by three students:
+
+-   Olga Leśkiewicz - created plan of the project, performed quality check, mapping and prepared design of the slides show
+
+-   Kaja Łucka - she wrote an introduction, performed enrichment analysis with DAVID, KEGG and GEO
+
+-   Tomasz Medoń - meta-data specialist, performed DEG analysis and compered its results to original study
+
+All of the members added their parts to the slides show of presentation and participated in looking for the right aritcle
+
+## Citations:
+
+\[1\] Tong, Man, Kwok Wah Chan, Jessie Y.J. Bao, Kai Yau Wong, Jin-Na Chen, Pak Shing Kwan, Kwan Ho Tang, et al. 2012. ‘Rab25 Is a Tumor Suppressor Gene with Antiangiogenic and Anti-Invasive Activities in Esophageal Squamous Cell Carcinoma’. *Cancer Research* 72(22): 6024–35. doi:[10.1158/0008-5472.CAN-12-1269](https://doi.org/10.1158/0008-5472.CAN-12-1269 "https://doi.org/10.1158/0008-5472.CAN-12-1269").
+
+\[2\] Download a Genome Data Package’. <https://www.ncbi.nlm.nih.gov/datasets/docs/v2/how-tos/genomes/download-genome/> (January 28, 2026).
+
+\[3\] Download and Install’. <https://www.ncbi.nlm.nih.gov/datasets/docs/v2/command-line-tools/download-and-install/> (January 28, 2026).
+
+\[4\] Guide to Linux Parallel Command With Examples \| Baeldung on Linux’. 2024. <https://www.baeldung.com/linux/parallel-command-tutorial> (January 28, 2026).
+
+\[5\] Lesson 6: Downloading Data from the SRA - Bioinformatics for Beginners 2022’. <https://bioinformatics.ccr.cancer.gov/docs/b4b/Module1_Unix_Biowulf/Lesson6/> (January 28, 2026).
+
+\[6\] O’Leary NA, Cox E, Holmes JB, Anderson WR, Falk R, Hem V, Tsuchiya MTN, Schuler GD, Zhang X, Torcivia J, Ketter A, Breen L, Cothran J, Bajwa H, Tinne J, Meric PA, Hlavina W, Schneider VA. [Exploring and retrieving sequence and metadata for species across the tree of life with NCBI Datasets.](https://www.nature.com/articles/s41597-024-03571-y "https://www.nature.com/articles/s41597-024-03571-y") Sci Data. 2024 Jul 5;11(1):732. doi: 10.1038/s41597-024-03571-y. PMID: 38969627; PMCID: PMC11226681.
