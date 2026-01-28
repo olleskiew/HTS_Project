@@ -14,7 +14,7 @@ entrez-direct 24.0
 fasterq-dump : 3.2.1  
 md5sum (GNU coreutils): 9.4  
 bowtie2-align-s version: 2.5.4  
-samtools 1.22.1
+samtools 1.22.1  
 R version 4.3.3 (2024-02-29)
 
 RStudio 2025.09.1+401 "Cucumberleaf Sunflower" Release (20de356561bd58a6d88927cce948bd076d06e4ca, 2025-09-23) for Ubuntu Jammy
